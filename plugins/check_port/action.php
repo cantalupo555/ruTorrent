@@ -189,5 +189,4 @@ if ($currentUseWebsiteIPv6 !== false) {
 }
 
 // Send the final JSON response to the client.
-header('Content-Type: application/json');
-echo json_encode($response);
+CachedEcho::send(JSON::safeEncode($response), "application/json");
