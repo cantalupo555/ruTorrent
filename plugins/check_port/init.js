@@ -48,28 +48,40 @@ plugin.update = function() {
  * @returns {string} The formatted title line for this protocol's status
  */
 function updateProtocolStatus(data, proto, getStatusText) {
+	const isEnabled = data['use_' + proto];
+	const icon = (proto === 'ipv4') ? a.iconIPv4 : a.iconIPv6;
+	const textEl = (proto === 'ipv4') ? a.textIPv4 : a.textIPv6;
+
+	// Handle the case where the protocol is not enabled
+	if (!isEnabled) {
+		icon.hide();
+		textEl.hide();
+		return ""; // Return an empty title line if not enabled
+	}
+
+	// Proceed with showing the icon if the protocol is enabled
+	icon.show();
+
+	// Extract status, address, and port data for the protocol
 	const status = parseInt(data[proto + '_status']);
 	const address = data[proto];
 	const port = data[proto + '_port'];
 	const isAvailable = address && address !== "-"; // Check if an IP address was returned
 
-	// Select the correct UI elements for the given protocol
-	const icon = (proto === 'ipv4') ? a.iconIPv4 : a.iconIPv6;
-	const textEl = (proto === 'ipv4') ? a.textIPv4 : a.textIPv6;
-
+	// Update the icon class to reflect the current status (0: unknown, 1: closed, 2: open)
 	icon.removeClass("pstatus0 pstatus1 pstatus2").addClass("pstatus" + status);
 
-	let displayText = "";
 	let titleText = "";
 
 	if (isAvailable) {
 		// Format display text as IP:PORT, with brackets for IPv6
-		displayText = (proto === 'ipv6') ? `[${address}]:${port}` : `${address}:${port}`;
+		const displayText = (proto === 'ipv6') ? `[${address}]:${port}` : `${address}:${port}`;
 		textEl.text(displayText).show();
 		// Create a detailed title for the tooltip
 		titleText = `${proto.toUpperCase()}: ${displayText} (${getStatusText(status)})`;
 	} else {
-		// If IP is not available, hide the text element
+		// If IP is not available, hide the icon and the text element
+		icon.hide();
 		textEl.text("").hide();
 		titleText = `${proto.toUpperCase()}: ${(theUILang.notAvailable || "N/A")} (${getStatusText(status)})`;
 	}
@@ -88,14 +100,10 @@ plugin.getPortStatus = function(d) {
 	const titleLines = [
 		updateProtocolStatus(d, 'ipv4', getStatusText),
 		updateProtocolStatus(d, 'ipv6', getStatusText)
-	];
+	].filter(line => line); // Filter out empty strings for disabled protocols
 
-	// Check if both IPv4 and IPv6 addresses are available
-	const ipv4Available = d.ipv4 && d.ipv4 !== "-";
-	const ipv6Available = d.ipv6 && d.ipv6 !== "-";
-
-	// Show a separator only if both protocols have an IP address to display
-	if (ipv4Available && ipv6Available) {
+	// Show a separator only if both protocol icons are visible
+	if (a.iconIPv4.is(":visible") && a.iconIPv6.is(":visible")) {
 		a.separator.text("|").show();
 	} else {
 		a.separator.text("").hide();

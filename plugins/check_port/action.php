@@ -174,6 +174,10 @@ $response = [
 	"ipv6" => "-", "ipv6_port" => (int)$port, "ipv6_status" => 0,
 ];
 
+// Add enabled flags to the response
+$response['use_ipv4'] = ($currentUseWebsiteIPv4 !== false);
+$response['use_ipv6'] = ($currentUseWebsiteIPv6 !== false);
+
 // Perform the IPv4 check if it's enabled in conf.php
 if ($currentUseWebsiteIPv4 !== false) {
 	$ipv4_result = get_and_check_ip('4', $currentUseWebsiteIPv4, $ip_glob, $port, $currentCheckPortTimeout);
