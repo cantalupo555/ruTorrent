@@ -10,9 +10,10 @@ const a = {};
  * @param {boolean} isUpdate - If true, indicates a manual refresh, adding "..." to the title
  */
 plugin.resetStatus = function(isUpdate) {
-	// Reset icons to the "unknown" state (pstatus0)
-	a.iconIPv4.removeClass().addClass("icon port-icon-ipv4 pstatus0");
-	a.iconIPv6.removeClass().addClass("icon port-icon-ipv6 pstatus0");
+	// Reset icons to the "unknown" state (pstatus0) and ensure they are visible for the loading state
+	a.iconIPv4.removeClass().addClass("icon pstatus0").show();
+	a.iconIPv6.removeClass().addClass("icon pstatus0").show();
+
 	// Hide IP address text and the separator
 	a.textIPv4.text("").hide();
 	a.separator.text("").hide();
@@ -52,40 +53,38 @@ function updateProtocolStatus(data, proto, getStatusText) {
 	const icon = (proto === 'ipv4') ? a.iconIPv4 : a.iconIPv6;
 	const textEl = (proto === 'ipv4') ? a.textIPv4 : a.textIPv6;
 
-	// Handle the case where the protocol is not enabled
+	// Handle the case where the protocol is not enabled in conf.php
 	if (!isEnabled) {
 		icon.hide();
 		textEl.hide();
 		return ""; // Return an empty title line if not enabled
 	}
 
-	// Proceed with showing the icon if the protocol is enabled
-	icon.show();
-
-	// Extract status, address, and port data for the protocol
 	const status = parseInt(data[proto + '_status']);
 	const address = data[proto];
 	const port = data[proto + '_port'];
 	const isAvailable = address && address !== "-"; // Check if an IP address was returned
 
-	// Update the icon class to reflect the current status (0: unknown, 1: closed, 2: open)
+	// Update the icon class to reflect the current status
 	icon.removeClass("pstatus0 pstatus1 pstatus2").addClass("pstatus" + status);
 
 	let titleText = "";
 
 	if (isAvailable) {
+		icon.show();
 		// Format display text as IP:PORT, with brackets for IPv6
 		const displayText = (proto === 'ipv6') ? `[${address}]:${port}` : `${address}:${port}`;
 		textEl.text(displayText).show();
 		// Create a detailed title for the tooltip
 		titleText = `${proto.toUpperCase()}: ${displayText} (${getStatusText(status)})`;
 	} else {
-		// If IP is not available, hide the icon and the text element
+		// If IP is not available on the server, hide the icon and the text element
 		icon.hide();
-		textEl.text("").hide();
-		titleText = `${proto.toUpperCase()}: ${(theUILang.notAvailable || "N/A")} (${getStatusText(status)})`;
+		textEl.hide();
+		// Still provide a title for debugging or information
+		titleText = `${proto.toUpperCase()}: ${(theUILang.notAvailable || "N/A")}`;
 	}
-	return titleText; // Return the generated title string
+	return titleText;
 }
 
 /**
@@ -100,9 +99,10 @@ plugin.getPortStatus = function(d) {
 	const titleLines = [
 		updateProtocolStatus(d, 'ipv4', getStatusText),
 		updateProtocolStatus(d, 'ipv6', getStatusText)
-	].filter(line => line); // Filter out empty strings for disabled protocols
+	].filter(line => line); // Filter out empty strings for disabled/unavailable protocols
 
 	// Show a separator only if both protocol icons are visible
+	// The CSS 'gap' property will handle the spacing automatically
 	if (a.iconIPv4.is(":visible") && a.iconIPv6.is(":visible")) {
 		a.separator.text("|").show();
 	} else {
@@ -144,7 +144,7 @@ plugin.onLangLoaded = function() {
 
 	const ipv4Icon = $("<div>").attr("id", "port-icon-ipv4").addClass("icon");
 	const ipv4Text = $("<span>").attr("id", "port-ip-text-ipv4").addClass("d-none d-lg-block port-ip-text-segment");
-	const separator = $("<span>").attr("id", "port-ip-separator").addClass("d-none d-lg-block").css({"margin-left": "3px", "margin-right": "3px"});
+	const separator = $("<span>").attr("id", "port-ip-separator").addClass("d-none d-lg-block");
 	const ipv6Icon = $("<div>").attr("id", "port-icon-ipv6").addClass("icon");
 	const ipv6Text = $("<span>").attr("id", "port-ip-text-ipv6").addClass("d-none d-lg-block port-ip-text-segment");
 

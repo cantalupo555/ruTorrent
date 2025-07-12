@@ -1,35 +1,55 @@
-/*
+/**
  * check_port Plugin Stylesheet
  *
  * Defines the icons and layout for the port status indicator in the status bar.
  */
 
-/* Define CSS variables for the different status icons. */
-/* Using data URIs for the icons avoids extra HTTP requests. */
+/* 1. Icon Definitions */
 #StatusBar {
-	/* Icon for when the port status is unknown or is being checked. */
 	--pane-port-unknown-icon: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAA7ElEQVR4AYyRtUEAQRBFzw2HiDbogYzLKIROKIFKSJEYpwDc3Yd9wUfOgz9r88bWM7MmxetLniEzKypvs6xsEvTnIQP4+ri3j4cDwV5FGSZymnRiHzilAr/eTtrAAjP152IcR/t6sZfjZUNf75eNMKYgE5kpGSect1fmUFu5gTY+mZXt8XBRIPu/WQv5Y3KnGS54pC+B6G5nwd5vVwUyUTahMgqirxrIuVoyZpxIXBIZJ+lsswS0h/2SgBWwkg2nWsbdeaSsJrBQNiAJQNkEuoACc0+fzeSGCF+Y74E1koNxJXIuEEawEeKwdA0A1zpJYUqqdYUAAAAASUVORK5CYII=);
-	/* Icon for when the port is confirmed to be closed (error state). */
 	--pane-port-error-icon: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAMAAAAolt3jAAAAVFBMVEX////////////////////////////////////////////////ORirORirdcWDlTzzpgW/qXEHtY0XtjnvxbEjyppbznIf0dk71f1j5tqH72dP///8Q8E8oAAAADXRSTlMAAgUGBwgKDRMUFRnTtFxmSQAAAHpJREFUCB0FgAEOwiAMRV8pq5LI/Q+6xDlG+43FAiZw7zIZMBlOXpzg8HkNGXrTH5z5irLetCOP1SAKIHkG+BwyspOl8t5xbYASOA0EJUQJOplC2wtUtPMKiaMBxzq7c40vPyBucNQyqsriVjYDJuHkop5mJmACe2f1P5ZxRkN1OzPZAAAAAElFTkSuQmCC);
-	/* Icon for when the port is confirmed to be open (success state). */
 	--pane-port-success-icon: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAA/ElEQVR4AWL4//8/DLMDMRuIrdMt9h8ZAwEXSBxKMwExC4ijDMSsIBqmcPGVKSgYJg7VzAGiGWAmgSR6T1f/X393GZguOZwIwjAxEBumWRSmkQ1ZU8rhEGwYXTMLTCOKpqTdPoC6ycIGgRgAgFgUl31YhCHZBB0Bd3e9Tw6nydWvXgElUsVcyD0x4z+J0Fu36QOBHIiO6JKao+qbdDofHZhJniIFRJjtp87wJpXKRQZ7F10CDcjLw/xKOF/OSvC+VI7W5SIqs1wl8XBwvEM6K791FpZImy8JMX2n8CK7bCD/JTkjb480SQPYGch/PLkYkBFIUPnjkfsJwn6EG7GmEErgVbTJAAAAAElFTkSuQmCC);
 }
-/* General styling for the icon element within the port status pane. */
-#port-pane .icon {
-	background-position: center; /* Center the icon within its container. */
-	background-repeat: no-repeat; /* Prevent the icon from tiling. */
-	width: 14px; /* Explicitly set width to match the icon image. */
-	height: 14px; /* Explicitly set height to match the icon image. */
+
+/* 2. Port Status Component Layout */
+#port-pane.port-status-container {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	padding: 0 4px; /* Symmetrical padding */
+	box-sizing: border-box;
+	/* Crucial: Prevents content from expanding the container and breaking the layout */
+	overflow: hidden;
 }
-/* Assigns the 'unknown' status icon. */
-#port-pane .pstatus0 {
+
+/* 3. IP Text Behavior */
+.port-status-container .port-ip-text-segment {
+	/* Prevents long text from wrapping and breaking the flexbox layout */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	/* This is the key fix: it allows the text element to shrink below its content size */
+	min-width: 0;
+}
+
+/* 4. Icon Base and Status Styles */
+.port-status-container .icon {
+	background-position: center;
+	background-repeat: no-repeat;
+	width: 14px;
+	height: 14px;
+	/* Required to prevent the icon from shrinking in the flex container */
+	flex-shrink: 0;
+}
+
+.port-status-container .pstatus0 {
 	background-image: var(--pane-port-unknown-icon);
 }
-/* Assigns the 'error' (closed) status icon. */
-#port-pane .pstatus1 {
+
+.port-status-container .pstatus1 {
 	background-image: var(--pane-port-error-icon);
 }
-/* Assigns the 'success' (open) status icon. */
-#port-pane .pstatus2 {
+
+.port-status-container .pstatus2 {
 	background-image: var(--pane-port-success-icon);
 }
