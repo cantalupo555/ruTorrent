@@ -5,19 +5,25 @@ plugin.loadMainCSS();
 // Cache jQuery elements for performance and readability
 const a = {};
 
+// Flag to track if the UI has been built
+plugin.ui_initialized = false;
+
 /**
  * Resets the UI elements to a neutral/unknown state, typically while checking
  * @param {boolean} isUpdate - If true, indicates a manual refresh, adding "..." to the title
  */
 plugin.resetStatus = function(isUpdate) {
-	// Reset icons to the "unknown" state (pstatus0) and ensure they are visible for the loading state
-	a.iconIPv4.removeClass().addClass("icon pstatus0").show();
-	a.iconIPv6.removeClass().addClass("icon pstatus0").show();
+	// Exit if the UI hasn't been created yet
+	if (!plugin.ui_initialized) return;
+
+	// Reset icons to the "unknown" state (pstatus0)
+	if (a.iconIPv4) a.iconIPv4.removeClass().addClass("icon pstatus0").show();
+	if (a.iconIPv6) a.iconIPv6.removeClass().addClass("icon pstatus0").show();
 
 	// Hide IP address text and the separator
-	a.textIPv4.text("").hide();
-	a.separator.text("").hide();
-	a.textIPv6.text("").hide();
+	if (a.textIPv4) a.textIPv4.text("").hide();
+	if (a.separator) a.separator.text("").hide();
+	if (a.textIPv6) a.textIPv6.text("").hide();
 
 	// Set a tooltip to indicate that a check is in progress
 	let title = theUILang.checkingPort || "Checking port status...";
@@ -25,13 +31,6 @@ plugin.resetStatus = function(isUpdate) {
 		title += "..."; // Append ellipsis for manual updates
 	}
 	a.pane.prop("title", title);
-};
-
-// Initial check when the plugin is first loaded
-plugin.init = function() {
-	plugin.resetStatus(false);
-	// Request the initial port status from the backend
-	theWebUI.request("?action=initportcheck", [plugin.getPortStatus, plugin]);
 };
 
 // Function to manually trigger an update of the port status
@@ -49,15 +48,12 @@ plugin.update = function() {
  * @returns {string} The formatted title line for this protocol's status
  */
 function updateProtocolStatus(data, proto, getStatusText) {
-	const isEnabled = data['use_' + proto];
 	const icon = (proto === 'ipv4') ? a.iconIPv4 : a.iconIPv6;
 	const textEl = (proto === 'ipv4') ? a.textIPv4 : a.textIPv6;
 
-	// Handle the case where the protocol is not enabled in conf.php
-	if (!isEnabled) {
-		icon.hide();
-		textEl.hide();
-		return ""; // Return an empty title line if not enabled
+	// If the elements for this protocol don't exist, exit.
+	if (!icon) {
+		return "";
 	}
 
 	const status = parseInt(data[proto + '_status']);
@@ -92,6 +88,47 @@ function updateProtocolStatus(data, proto, getStatusText) {
  * @param {object} d - The JSON object received from the backend response
  */
 plugin.getPortStatus = function(d) {
+	// On the first run, build the UI dynamically based on the configuration
+	if (!plugin.ui_initialized) {
+		// The pane container already exists, just clear it before building the final UI
+		a.pane.empty();
+
+		const container = a.pane; // Use the existing container
+
+		if (d.use_ipv4) {
+			container.append($("<div>").attr("id", "port-icon-ipv4").addClass("icon"));
+			container.append($("<span>").attr("id", "port-ip-text-ipv4").addClass("d-none d-lg-block port-ip-text-segment"));
+		}
+
+		if (d.use_ipv4 && d.use_ipv6) {
+			container.append($("<span>").attr("id", "port-ip-separator").addClass("d-none d-lg-block"));
+		}
+
+		if (d.use_ipv6) {
+			container.append($("<div>").attr("id", "port-icon-ipv6").addClass("icon"));
+			container.append($("<span>").attr("id", "port-ip-text-ipv6").addClass("d-none d-lg-block port-ip-text-segment"));
+		}
+
+		// Cache the newly created elements
+		if (d.use_ipv4) {
+			a.iconIPv4 = $("#port-icon-ipv4");
+			a.textIPv4 = $("#port-ip-text-ipv4");
+		}
+		if (d.use_ipv4 && d.use_ipv6) {
+			a.separator = $("#port-ip-separator");
+		}
+		if (d.use_ipv6) {
+			a.iconIPv6 = $("#port-icon-ipv6");
+			a.textIPv6 = $("#port-ip-text-ipv6");
+		}
+
+		// Attach the context menu if permitted
+		if (plugin.canChangeMenu()) {
+			a.pane.on("mousedown", plugin.createPortMenu);
+		}
+		plugin.ui_initialized = true;
+	}
+
 	// Helper function to get the localized text for a status code
 	const getStatusText = (statusCode) => theUILang.portStatus[statusCode] || theUILang.portStatus[0] || "Unknown";
 
@@ -101,12 +138,13 @@ plugin.getPortStatus = function(d) {
 		updateProtocolStatus(d, 'ipv6', getStatusText)
 	].filter(line => line); // Filter out empty strings for disabled/unavailable protocols
 
-	// Show a separator only if both protocol icons are visible
-	// The CSS 'gap' property will handle the spacing automatically
-	if (a.iconIPv4.is(":visible") && a.iconIPv6.is(":visible")) {
-		a.separator.text("|").show();
-	} else {
-		a.separator.text("").hide();
+	// Show a separator only if it exists and both protocol icons are visible
+	if (a.separator) {
+		if (a.iconIPv4.is(":visible") && a.iconIPv6.is(":visible")) {
+			a.separator.text("|").show();
+		} else {
+			a.separator.text("").hide();
+		}
 	}
 
 	// Set the combined tooltip for the entire status pane
@@ -139,36 +177,16 @@ plugin.createPortMenu = function(e) {
 };
 
 plugin.onLangLoaded = function() {
-	// Create status bar elements in a more readable way
-	const container = $("<div>").addClass("port-status-container");
+	// Create a temporary loading state immediately
+	const container = $("<div>").addClass("port-status-container")
+		.append($("<div>").addClass("icon pstatus0")); // Add a single "unknown" icon as a placeholder
 
-	const ipv4Icon = $("<div>").attr("id", "port-icon-ipv4").addClass("icon");
-	const ipv4Text = $("<span>").attr("id", "port-ip-text-ipv4").addClass("d-none d-lg-block port-ip-text-segment");
-	const separator = $("<span>").attr("id", "port-ip-separator").addClass("d-none d-lg-block");
-	const ipv6Icon = $("<div>").attr("id", "port-icon-ipv6").addClass("icon");
-	const ipv6Text = $("<span>").attr("id", "port-ip-text-ipv6").addClass("d-none d-lg-block port-ip-text-segment");
-
-	// Assemble the elements into the container
-	container.append(ipv4Icon, ipv4Text, separator, ipv6Icon, ipv6Text);
-
-	// Add the newly created pane to the ruTorrent status bar
 	plugin.addPaneToStatusbar("port-pane", container, -1, true);
-
-	// Now that the pane is in the DOM, cache all the jQuery elements for future use
 	a.pane = $("#port-pane");
-	a.iconIPv4 = $("#port-icon-ipv4");
-	a.textIPv4 = $("#port-ip-text-ipv4");
-	a.separator = $("#port-ip-separator");
-	a.iconIPv6 = $("#port-icon-ipv6");
-	a.textIPv6 = $("#port-ip-text-ipv6");
+	a.pane.prop("title", theUILang.checkingPort || "Checking port status...");
 
-	// If the user has permissions, attach the right-click context menu
-	if (plugin.canChangeMenu()) {
-		a.pane.on("mousedown", plugin.createPortMenu);
-	}
-
-	// Trigger the initial port check
-	plugin.init();
+	// Trigger the initial port check to get the configuration and build the final UI
+	theWebUI.request("?action=initportcheck", [plugin.getPortStatus, plugin]);
 };
 
 // This function is called when the plugin is removed/unloaded
